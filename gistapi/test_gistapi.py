@@ -73,8 +73,10 @@ def test_gist_files_content(mock_get):
     assert "gistfile2.txt" in files_content
     assert files_content["gistfile2.txt"] == "content of gistfile2"
 
-    mock_get.assert_any_call("http://example.com/raw/gistfile1.txt", headers=HEADERS)
-    mock_get.assert_any_call("http://example.com/raw/gistfile2.txt", headers=HEADERS)
+    mock_get.assert_any_call(
+        "http://example.com/raw/gistfile1.txt", headers=HEADERS)
+    mock_get.assert_any_call(
+        "http://example.com/raw/gistfile2.txt", headers=HEADERS)
     assert mock_get.call_count == 3
 
 

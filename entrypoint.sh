@@ -15,8 +15,8 @@ if [ "$1" = 'pytest' ]; then
 elif [ "$1" = 'code-quality' ]; then
   # Run all code quality checks
   shift
-  poetry run autopep8 --in-place --recursive .
   poetry run black .
+  poetry run autopep8 --in-place --recursive .
   poetry run isort .
   poetry run mypy gistapi || true  # Ignore mypy errors
   poetry run flake8 .
