@@ -10,9 +10,10 @@ providing a search across all public Gists for a given Github account.
 
 import os
 import re
+
 import requests
-from flask import Flask, jsonify, request, abort
 from dotenv import load_dotenv
+from flask import Flask, abort, jsonify, request
 
 # Load environment variables from .env file
 load_dotenv()

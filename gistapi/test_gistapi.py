@@ -1,7 +1,8 @@
-import pytest
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
 
-from gistapi import app, gists_for_user, gist_files_content, HEADERS
+import pytest
+
+from gistapi import HEADERS, app, gist_files_content, gists_for_user
 
 
 @pytest.fixture

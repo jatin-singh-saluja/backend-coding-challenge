@@ -10,3 +10,15 @@ services:
     volumes:
       - .:/app
     entrypoint: ["/entrypoint.sh"]
+
+  test:
+    build: .
+    command: ["pytest"]
+    volumes:
+      - .:/app
+
+  code-quality:
+    build: .
+    command: ["code-quality"]
+    volumes:
+      - .:/app
