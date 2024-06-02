@@ -1,3 +1,32 @@
+# Set up Instructions
+
+1. Install Docker on your machine.
+
+2. Inside the project directory, build the Docker image using the following command:
+
+    ```sh
+    docker-compose build
+    ```
+
+3. Run the following command to start the Flask API:
+
+    ```sh
+    docker-compose up web
+    ```
+
+4. Run the following command for tests:
+
+    ```sh
+    docker-compose run test
+    ```
+
+5. Run the following command for code quality check:
+
+    ```sh
+    docker-compose run code-quality
+    ```
+
+
 # Challenge
 
 This challenge is divided between the main task and additional stretch goals. All of those stretch goals are optional, but we would love to see them implemented. It is expected that you should be able to finish the challenge in about 1.5 hours. If you feel you are not able to implement everything on time, please, try instead describing how you would solve the points you didn't finish.
