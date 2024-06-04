@@ -14,7 +14,7 @@ import re
 import requests
 from dotenv import load_dotenv
 from flask import Flask, abort, jsonify, request
-from jsonschema import ValidationError, validate
+from jsonschema import SchemaError, ValidationError, validate
 
 # Load environment variables from .env file
 load_dotenv()
@@ -28,17 +28,39 @@ if not GITHUB_TOKEN:
 
 HEADERS = {"Authorization": f"token {GITHUB_TOKEN}"}
 
-# Define JSON schema for the input data
-search_schema = {
+search_input_schema = {
     "type": "object",
     "properties": {
         "username": {"type": "string"},
         "pattern": {"type": "string"},
         "page": {"type": "integer", "minimum": 1},
-        "per_page": {"type": "integer", "minimum": 1},
+        "per_page": {"type": "integer", "minimum": 1, "maximum": 100},
     },
     "required": ["username", "pattern"],
-    "additionalProperties": False,
+}
+
+search_output_schema = {
+    "type": "object",
+    "properties": {
+        "status": {"type": "string"},
+        "username": {"type": "string"},
+        "pattern": {"type": "string"},
+        "matches": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "gist_id": {"type": "string"},
+                    "filename": {"type": "string"},
+                    "url": {"type": "string"},
+                },
+                "required": ["gist_id", "filename", "url"],
+            },
+        },
+        "page": {"type": "integer"},
+        "more_pages": {"type": "boolean"},
+    },
+    "required": ["status", "username", "pattern", "matches", "page", "more_pages"],
 }
 
 
@@ -65,7 +87,7 @@ def search():
         abort(400, description="Invalid JSON data")
 
     try:
-        validate(instance=post_data, schema=search_schema)
+        validate(instance=post_data, schema=search_input_schema)
     except ValidationError as e:
         abort(400, description=f"JSON validation error: {e.message}")
 
@@ -107,6 +129,11 @@ def search():
     result["page"] = page
     result["more_pages"] = more_pages
 
+    try:
+        validate(instance=result, schema=search_output_schema)
+    except ValidationError as e:
+        abort(500, description=f"Response validation error: {e.message}")
+
     return jsonify(result)
 
 
@@ -142,6 +169,7 @@ def gists_for_user(
         The dict parsed from the json response from the Github API.  See
         the above URL for details of the expected structure.
     """
+
     gists_url = f"https://api.github.com/users/{username}/gists"
     params = {"page": page, "per_page": per_page}
 
