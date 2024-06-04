@@ -14,6 +14,7 @@ import re
 import requests
 from dotenv import load_dotenv
 from flask import Flask, abort, jsonify, request
+from jsonschema import ValidationError, validate
 
 # Load environment variables from .env file
 load_dotenv()
@@ -25,8 +26,20 @@ GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 if not GITHUB_TOKEN:
     raise RuntimeError("GITHUB_TOKEN is not set")
 
-
 HEADERS = {"Authorization": f"token {GITHUB_TOKEN}"}
+
+# Define JSON schema for the input data
+search_schema = {
+    "type": "object",
+    "properties": {
+        "username": {"type": "string"},
+        "pattern": {"type": "string"},
+        "page": {"type": "integer", "minimum": 1},
+        "per_page": {"type": "integer", "minimum": 1},
+    },
+    "required": ["username", "pattern"],
+    "additionalProperties": False,
+}
 
 
 @app.route("/ping")
@@ -51,16 +64,15 @@ def search():
     if post_data is None:
         abort(400, description="Invalid JSON data")
 
+    try:
+        validate(instance=post_data, schema=search_schema)
+    except ValidationError as e:
+        abort(400, description=f"JSON validation error: {e.message}")
+
     username = post_data.get("username")
     pattern = post_data.get("pattern")
     page = post_data.get("page", 1)
     per_page = post_data.get("per_page", 10)
-
-    if not username:
-        abort(400, description="Username is required")
-
-    if not pattern:
-        abort(400, description="Pattern is required")
 
     try:
         re.compile(pattern)
@@ -130,7 +142,6 @@ def gists_for_user(
         The dict parsed from the json response from the Github API.  See
         the above URL for details of the expected structure.
     """
-
     gists_url = f"https://api.github.com/users/{username}/gists"
     params = {"page": page, "per_page": per_page}
 

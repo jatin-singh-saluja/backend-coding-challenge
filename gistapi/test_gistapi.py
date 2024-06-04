@@ -87,7 +87,10 @@ def test_search_missing_pattern(client):
 
     assert response.status_code == 400
     assert json_data["status"] == "error"
-    assert json_data["message"] == "Pattern is required"
+    assert (
+        json_data["message"]
+        == "JSON validation error: 'pattern' is a required property"
+    )
 
 
 def test_search_missing_username(client):
@@ -99,4 +102,7 @@ def test_search_missing_username(client):
 
     assert response.status_code == 400
     assert json_data["status"] == "error"
-    assert json_data["message"] == "Username is required"
+    assert (
+        json_data["message"]
+        == "JSON validation error: 'username' is a required property"
+    )
