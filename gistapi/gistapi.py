@@ -8,13 +8,14 @@ endpoint to verify the server is up and responding and a search endpoint
 providing a search across all public Gists for a given Github account.
 """
 
+import json
 import os
 import re
 
 import requests
 from dotenv import load_dotenv
-from flask import Flask, abort, jsonify, request
-from jsonschema import SchemaError, ValidationError, validate
+from flask import Flask, Response, abort, jsonify, request, stream_with_context
+from jsonschema import ValidationError, validate
 
 # Load environment variables from .env file
 load_dotenv()
@@ -101,40 +102,55 @@ def search():
     except re.error:
         abort(400, description="Invalid regular expression pattern")
 
-    result = {}
+    def generate():
+        try:
+            gists, more_pages = gists_for_user(username, page, per_page)
+        except RuntimeError as e:
+            abort(500, description=str(e))
 
-    try:
-        gists, more_pages = gists_for_user(username, page, per_page)
-    except RuntimeError as e:
-        abort(500, description=str(e))
+        matches = []
 
-    matches = []
-
-    for gist in gists:
-        gist_files = gist_files_content(gist["url"])
-        for filename, content in gist_files.items():
-            if re.search(pattern, content):
-                matches.append(
-                    {
+        for gist in gists:
+            gist_files = gist_files_content(gist["url"])
+            for filename, content in gist_files.items():
+                if re.search(pattern, content):
+                    match = {
                         "gist_id": gist["id"],
                         "filename": filename,
                         "url": gist["html_url"],
                     }
-                )
+                    matches.append(match)
+                    # Validate the match against the schema before yielding
+                    response_part = {
+                        "status": "success",
+                        "username": username,
+                        "pattern": pattern,
+                        "matches": [match],
+                        "page": page,
+                        "more_pages": more_pages,
+                    }
+                    try:
+                        validate(instance=response_part,
+                                 schema=search_output_schema)
+                    except ValidationError as e:
+                        abort(
+                            500, description=f"Response validation error: {e.message}"
+                        )
+                    # Stream new match to the client immediately
+                    yield (json.dumps(response_part) + "\n").encode("utf-8")
 
-    result["status"] = "success" if matches else "no matches"
-    result["username"] = username
-    result["pattern"] = pattern
-    result["matches"] = matches
-    result["page"] = page
-    result["more_pages"] = more_pages
+        if not matches:
+            response_part = {
+                "status": "no matches",
+                "username": username,
+                "pattern": pattern,
+                "matches": [],
+                "page": page,
+                "more_pages": more_pages,
+            }
+            yield (json.dumps(response_part) + "\n").encode("utf-8")
 
-    try:
-        validate(instance=result, schema=search_output_schema)
-    except ValidationError as e:
-        abort(500, description=f"Response validation error: {e.message}")
-
-    return jsonify(result)
+    return Response(stream_with_context(generate()), content_type="application/json")
 
 
 @app.errorhandler(400)
@@ -169,7 +185,6 @@ def gists_for_user(
         The dict parsed from the json response from the Github API.  See
         the above URL for details of the expected structure.
     """
-
     gists_url = f"https://api.github.com/users/{username}/gists"
     params = {"page": page, "per_page": per_page}
 
